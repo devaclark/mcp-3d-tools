@@ -1,0 +1,14 @@
+services:
+  cad-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smithie-cad-mcp:latest
+    container_name: mcp-3d-tools
+    stdin_open: true
+    volumes:
+      - ${HOST_WORKSPACE:-C:\smithie.co\research\cyber-deck}:/workspace
+    env_file:
+      - .env
+    environment:
+      - WORKSPACE_ROOT=/workspace
