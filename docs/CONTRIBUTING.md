@@ -14,15 +14,11 @@ import json
 import os
 from typing import Callable
 
+from utils.path_utils import resolve, ensure_parent, with_suffix
+from utils.content_helpers import success_with_image, error_response
 from utils.subprocess_runner import run as run_cmd
 
 WORKSPACE = os.environ.get("WORKSPACE_ROOT", "/workspace")
-
-
-def _resolve(path: str) -> str:
-    if os.path.isabs(path):
-        return path
-    return os.path.join(WORKSPACE, path)
 
 
 async def your_tool_name(
@@ -40,7 +36,14 @@ async def your_tool_name(
     Returns:
         JSON string with result data.
     """
-    src = _resolve(input_file)
+    src = resolve(input_file)
+    if not os.path.isfile(src):
+        return error_response(f"File not found: {src}")
+
+    if not output_file:
+        output_file = with_suffix(src, ".out")
+    dst = ensure_parent(resolve(output_file))
+
     # ... your implementation ...
     return json.dumps({"success": True, "output_file": dst})
 
@@ -58,6 +61,10 @@ In `tools/registry.py`, add your module to `CATEGORY_MODULES`:
 CATEGORY_MODULES: dict[str, str] = {
     "openscad": "tools.openscad_tools",
     "bambu": "tools.bambu_tools",
+    "visual": "tools.visual_tools",
+    "mesh": "tools.mesh_tools",
+    "workspace": "tools.workspace_tools",
+    "system": "tools.system_tools",
     "your_category": "tools.your_tools",  # Add this line
 }
 ```
@@ -67,7 +74,7 @@ CATEGORY_MODULES: dict[str, str] = {
 In `.env`, add the category:
 
 ```
-MCP_TOOL_CATEGORIES=openscad,bambu,your_category
+MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,workspace,system,your_category
 ```
 
 ### 4. Update the Dockerfile (if needed)
@@ -80,15 +87,71 @@ If your tool requires a new binary, add it to the `apt-get install` or download 
 docker compose build
 ```
 
+## Shared Utilities
+
+Use the shared utilities instead of duplicating code:
+
+### Path resolution
+
+```python
+from utils.path_utils import resolve, ensure_parent, with_suffix, workspace_glob
+```
+
+- `resolve(path)` -- Convert workspace-relative path to absolute container path
+- `ensure_parent(path)` -- Create parent directories and return the path
+- `with_suffix(path, ".stl")` -- Replace file extension
+- `workspace_glob(pattern, extensions)` -- List files matching a pattern
+
+### Response builders
+
+```python
+from utils.content_helpers import success_with_image, success_with_images, error_response
+```
+
+- `success_with_image(metadata, image_path)` -- Return JSON + inline image
+- `success_with_images(metadata, image_paths)` -- Return JSON + multiple images
+- `error_response(message)` -- Return structured error JSON
+
+### Subprocess execution
+
+```python
+from utils.subprocess_runner import run as run_cmd
+```
+
+Always use `run_cmd` for external processes. Never use `os.system()` or bare `subprocess.run()`.
+
+### STL rendering
+
+```python
+from utils.render_engine import render_stl, render_turntable, render_cross_section
+```
+
+Use the render engine to generate PNG previews of STL files for inline chat display.
+
+## Returning Inline Images
+
+To return images that display directly in chat, use `success_with_image`:
+
+```python
+from utils.content_helpers import success_with_image
+
+async def my_visual_tool(stl_file: str) -> list:
+    # ... generate a PNG ...
+    metadata = {"success": True, "output_file": png_path}
+    return success_with_image(metadata, png_path)
+```
+
+The function returns a list containing a JSON string and a FastMCP `Image` object. Cursor renders the image inline.
+
 ## Tool Function Guidelines
 
 - All tool functions must be `async`.
 - Accept simple types that serialize well over JSON-RPC: `str`, `int`, `float`, `bool`, `list`, `dict`.
-- Return a JSON string (not a dict). FastMCP handles the serialization boundary.
-- Include a complete docstring with `Args:` and `Returns:` sections — FastMCP uses these to generate the tool schema.
-- Use `utils.subprocess_runner.run()` for any external process calls. Never use `os.system()` or bare `subprocess.run()`.
-- Resolve all file paths through `_resolve()` to handle workspace-relative paths.
+- Return a JSON string or a list (for multi-content responses with images).
+- Include a complete docstring with `Args:` and `Returns:` sections -- FastMCP uses these to generate the tool schema.
+- Use shared utilities (`path_utils`, `content_helpers`, `subprocess_runner`).
 - Set reasonable default timeouts.
+- Update `system_tools.py` `TOOL_CATALOG` and `WORKFLOW_TEMPLATES` if adding tools that fit existing workflows.
 
 ## Testing
 
@@ -110,13 +173,27 @@ print(asyncio.run(openscad_render('path/to/file.scad')))
 "
 ```
 
+### Check all categories load
+
+```bash
+docker run --rm -e MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,workspace,system \
+  smithie-cad-mcp:latest python -c "
+from tools.registry import load_tools
+loaded = load_tools(lambda f: print(f'  registered: {f.__name__}'))
+print(f'Categories loaded: {loaded}')
+"
+```
+
 ## Pull Request Checklist
 
-- [ ] New tool function has a complete docstring
-- [ ] `register()` function updated to include the new tool
-- [ ] Category added to `CATEGORY_MODULES` if new
-- [ ] Dockerfile updated if new system dependencies are needed
-- [ ] `docs/TOOLS.md` updated with parameter table and examples
-- [ ] `README.md` tool reference table updated
-- [ ] Docker image builds successfully
-- [ ] Smoke test passes
+- New tool function has a complete docstring with `Args:` and `Returns:`
+- `register()` function updated to include the new tool
+- Category added to `CATEGORY_MODULES` if new
+- Shared utilities used (`path_utils`, `content_helpers`) instead of duplicated code
+- Dockerfile updated if new system dependencies are needed
+- `docs/TOOLS.md` updated with parameter table and examples
+- `docs/ARCHITECTURE.md` tool count updated
+- `TOOL_CATALOG` in `system_tools.py` updated
+- `README.md` tool reference table updated
+- Docker image builds successfully
+- Smoke test passes

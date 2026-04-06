@@ -5,3 +5,14 @@ Pillow>=10.0.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-dotenv>=1.0.0
+
+# Mesh intelligence and visual rendering
+trimesh[easy]>=4.0.0
+pyrender>=0.1.45
+pyglet>=2.0.0
+matplotlib>=3.8.0
+scipy>=1.11.0
+networkx>=3.0
+
+# STEP / IGES / BREP solid geometry support (OpenCascade)
+cadquery>=2.4.0

@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# System dependencies: OpenSCAD (headless) + xvfb for its GL pipeline
+# System dependencies: OpenSCAD + xvfb + OpenGL for headless rendering
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openscad \
         xvfb \
@@ -18,6 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         wget \
         ca-certificates \
         libgl1-mesa-glx \
+        libgl1-mesa-dri \
+        libegl1-mesa \
+        libgles2-mesa \
+        libosmesa6 \
+        mesa-utils \
         libglib2.0-0 \
         libgtk-3-0 \
         libwebkit2gtk-4.0-37 \
@@ -52,11 +57,12 @@ COPY utils/ utils/
 # Default env (overridable via --env-file at runtime)
 ENV WORKSPACE_ROOT=/workspace \
     LOG_LEVEL=INFO \
-    MCP_TOOL_CATEGORIES=openscad,bambu \
+    MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,format,workspace,education,system \
     OPENSCAD_BIN=/usr/bin/openscad \
-    BAMBU_BIN=/usr/local/bin/bambu-studio
+    BAMBU_BIN=/usr/local/bin/bambu-studio \
+    PYOPENGL_PLATFORM=osmesa
 
-# Start a virtual framebuffer for OpenSCAD headless rendering,
+# Start a virtual framebuffer for OpenSCAD and pyrender headless rendering,
 # then run the MCP server with clean stdout for stdio transport.
 RUN printf '#!/bin/bash\nXvfb :99 -screen 0 1024x768x24 &\nexport DISPLAY=:99\nexec python server.py\n' > /usr/local/bin/entrypoint.sh \
     && chmod +x /usr/local/bin/entrypoint.sh

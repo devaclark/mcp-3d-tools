@@ -1,3 +1,4 @@
+"""Tool registry — discovers and loads tool category modules at startup."""
 from __future__ import annotations
 
 import importlib
@@ -10,11 +11,20 @@ logger = logging.getLogger(__name__)
 CATEGORY_MODULES: dict[str, str] = {
     "openscad": "tools.openscad_tools",
     "bambu": "tools.bambu_tools",
+    "visual": "tools.visual_tools",
+    "mesh": "tools.mesh_tools",
+    "format": "tools.format_tools",
+    "workspace": "tools.workspace_tools",
+    "education": "tools.education_tools",
+    "system": "tools.system_tools",
 }
 
 
 def get_enabled_categories() -> list[str]:
-    raw = os.environ.get("MCP_TOOL_CATEGORIES", "openscad,bambu")
+    raw = os.environ.get(
+        "MCP_TOOL_CATEGORIES",
+        "openscad,bambu,visual,mesh,format,workspace,education,system",
+    )
     return [c.strip().lower() for c in raw.split(",") if c.strip()]
 
 

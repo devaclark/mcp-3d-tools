@@ -22,9 +22,31 @@ from fastmcp import FastMCP  # noqa: E402
 mcp = FastMCP(
     name="mcp-3d-tools",
     instructions=(
-        "3D modeling toolkit. Use these tools to render OpenSCAD files, "
-        "export STLs/3MFs, slice for Bambu Lab printers, preview geometry, "
-        "and measure part dimensions."
+        "Advanced 3D modeling, manufacturing, and education toolkit.\n\n"
+        "VISUAL PREVIEWS:\n"
+        "- model_preview() renders ANY 3D format inline in chat (STL, OBJ, STEP, "
+        "PLY, 3MF, GLB, IGES, and more)\n"
+        "- openscad_preview() renders OpenSCAD .scad files inline in chat\n"
+        "- All preview tools return images directly in the conversation\n\n"
+        "FORMAT INTELLIGENCE:\n"
+        "- format_detect() identifies any 3D file format and its capabilities\n"
+        "- model_info() gives full geometry metadata for any supported format\n"
+        "- model_convert() converts between formats with fidelity analysis\n"
+        "- Supports: STL, OBJ, PLY, 3MF, GLB, DAE, AMF, STEP, IGES, BREP, SCAD, DXF\n\n"
+        "MANUFACTURING:\n"
+        "- openscad_render() exports .scad to STL with inline preview\n"
+        "- mesh_analyze() checks printability (manifold, overhangs, thin walls)\n"
+        "- mesh_repair() auto-fixes common mesh issues\n"
+        "- bambu_slice() prepares print-ready 3MF for Bambu Lab printers\n"
+        "- bambu_estimate() predicts print time, filament usage, and cost\n\n"
+        "EDUCATION:\n"
+        "- cad_explain() teaches 3D modeling and printing concepts\n"
+        "- format_guide() provides industry guidance for any file format\n"
+        "- cad_best_practices() gives actionable checklists by material or technique\n"
+        "- cad_recommend_tools() suggests programs to install for any workflow\n\n"
+        "Start with cad_capabilities() to see all available tools, or\n"
+        "cad_workflow(goal='...') for a recommended tool chain.\n"
+        "Use cad_health() to verify system status."
     ),
 )
 
