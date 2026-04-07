@@ -484,7 +484,150 @@ Suggest the optimal tool chain for a given goal.
 
 **Returns:** JSON with `recommended_workflow`, `steps`, and `alternatives`.
 
-**Example goals:** `"print this part"`, `"compare two designs"`, `"explore parameter space"`, `"repair a mesh"`, `"see project overview"`
+**Example goals:** `"print this part"`, `"compare two designs"`, `"explore parameter space"`, `"repair a mesh"`, `"see project overview"`, `"convert a STEP file"`, `"troubleshoot a print"`, `"learn about manifolds"`
+
+---
+
+### `cad_recommend_tools`
+
+Recommend the best programs and tools for a file type or workflow goal. Given a file path, extension, or goal, recommends available tools, industry-standard programs to install, and why each matters.
+
+**Parameters:**
+
+| Name                     | Type   | Required | Default | Description                                          |
+| ------------------------ | ------ | -------- | ------- | ---------------------------------------------------- |
+| `file_path_or_extension` | string | no       | `""`    | A file path or extension (e.g. ".step", "model.obj") |
+| `goal`                   | string | no       | `""`    | A workflow goal (e.g. "edit STEP files")             |
+
+**Returns:** JSON with `available_now`, `recommendations` (prioritized), and format metadata.
+
+---
+
+## Format Tools
+
+### `format_detect`
+
+Identify the 3D file format and report its capabilities. Auto-detects format from the file extension and returns detailed metadata including compatible programs and supported capabilities.
+
+**Parameters:**
+
+| Name        | Type   | Required | Default | Description                                         |
+| ----------- | ------ | -------- | ------- | --------------------------------------------------- |
+| `file_path` | string | yes      | --      | Path to any 3D file (absolute or workspace-relative) |
+
+**Returns:** JSON with `recognized`, `format` (name, description, capabilities, loader, recommended programs), `can_preview`, `convertible_to`.
+
+---
+
+### `model_info`
+
+Comprehensive metadata for any supported 3D model file. Loads the file, extracts geometry metrics (vertices, faces, bounds, volume), and combines with format registry data.
+
+**Parameters:**
+
+| Name        | Type   | Required | Default | Description                    |
+| ----------- | ------ | -------- | ------- | ------------------------------ |
+| `file_path` | string | yes      | --      | Path to any supported 3D file  |
+
+**Returns:** JSON with `geometry` (vertices, faces, is_watertight, surface_area, bounding_box, volume, center_of_mass), `format`, and `recommendations`.
+
+Supported formats: STL, OBJ, PLY, 3MF, GLB, GLTF, DAE, AMF, OFF, DXF, STEP, STP, IGES, IGS, BREP.
+
+---
+
+### `model_preview`
+
+Render any supported 3D model to a PNG preview, displayed inline in chat. Universal preview tool -- auto-detects the file format and uses the correct backend (trimesh for meshes, OpenCascade for STEP/IGES).
+
+**Parameters:**
+
+| Name           | Type   | Required | Default       | Description                              |
+| -------------- | ------ | -------- | ------------- | ---------------------------------------- |
+| `file_path`    | string | yes      | --            | Path to any supported 3D file            |
+| `output_file`  | string | no       | auto          | Output PNG path                          |
+| `camera_angle` | string | no       | `"isometric"` | Preset or `"azimuth,elevation"` degrees  |
+| `width`        | int    | no       | `1024`        | Image width in pixels                    |
+| `height`       | int    | no       | `768`         | Image height in pixels                   |
+
+**Camera presets:** `isometric`, `front`, `back`, `left`, `right`, `top`, `bottom`
+
+**Returns:** JSON metadata + inline image.
+
+---
+
+### `model_convert`
+
+Convert a 3D model between formats. Handles mesh-to-mesh conversions (STL, OBJ, PLY, 3MF, GLB, etc.) and solid-to-mesh conversions (STEP/IGES to STL/OBJ/3MF). Reports what fidelity is lost in the conversion.
+
+**Parameters:**
+
+| Name            | Type   | Required | Default | Description                                        |
+| --------------- | ------ | -------- | ------- | -------------------------------------------------- |
+| `input_file`    | string | yes      | --      | Path to input 3D file                              |
+| `output_format` | string | yes      | --      | Target format extension (e.g. "stl", "obj", "3mf") |
+| `output_file`   | string | no       | auto    | Output file path                                   |
+
+**Returns:** JSON with `input_format`, `output_format`, `vertices`, `faces`, `fidelity_analysis`, and `learn_more` hints.
+
+---
+
+## Education Tools
+
+### `cad_explain`
+
+Explain any 3D modeling, printing, or manufacturing concept. Searches the built-in knowledge base and returns a detailed explanation with related concepts.
+
+**Parameters:**
+
+| Name    | Type   | Required | Default | Description                                                                |
+| ------- | ------ | -------- | ------- | -------------------------------------------------------------------------- |
+| `topic` | string | yes      | --      | The concept to explain (e.g. "manifold", "overhangs", "BREP", "CSG")      |
+
+**Returns:** JSON with `title`, `summary`, `explanation`, `related_concepts`, and `also_relevant`. Call with empty topic to list all available topics.
+
+**Example topics:** `"manifold"`, `"overhangs"`, `"layer height"`, `"infill"`, `"CSG"`, `"BREP"`, `"tolerances"`, `"print in place"`, `"warping"`, `"wall thickness"`
+
+---
+
+### `format_guide`
+
+Get a comprehensive industry guide for a specific 3D file format. Returns what the format is, who uses it, strengths and limitations, recommended programs, and conversion compatibility.
+
+**Parameters:**
+
+| Name          | Type   | Required | Default | Description                                                  |
+| ------------- | ------ | -------- | ------- | ------------------------------------------------------------ |
+| `format_name` | string | yes      | --      | Format name or extension (e.g. "STEP", ".stl", "obj", "3mf") |
+
+**Returns:** JSON with `format` (full metadata), `when_to_use`, `conversion_options`, `conversion_notes`, `can_preview_in_mcp`, and `recommended_workflow`.
+
+---
+
+### `cad_best_practices`
+
+Get best practices for a given material, technique, or workflow. Returns actionable checklists and design rules.
+
+**Parameters:**
+
+| Name    | Type   | Required | Default | Description                                                           |
+| ------- | ------ | -------- | ------- | --------------------------------------------------------------------- |
+| `topic` | string | yes      | --      | The topic area (e.g. "PETG", "print in place", "FDM", "tolerances")  |
+
+**Returns:** JSON with `title`, `category`, `practices` (prioritized checklist), and `also_relevant`.
+
+---
+
+### `cad_troubleshoot`
+
+Diagnose a 3D printing or modeling problem from symptoms. Describe what's going wrong and get probable causes, step-by-step fixes, and prevention tips.
+
+**Parameters:**
+
+| Name      | Type   | Required | Default | Description                                                                 |
+| --------- | ------ | -------- | ------- | --------------------------------------------------------------------------- |
+| `symptom` | string | yes      | --      | Description of the problem (e.g. "stringing", "layers splitting", "warping") |
+
+**Returns:** JSON with `title`, `symptom`, `causes`, `fixes`, `prevention`, `materials_affected`, `related_concepts`, and `learn_more` hints. Call with empty symptom to list all diagnosable problems.
 
 ---
 
@@ -520,4 +663,24 @@ bambu_compare_materials(filament_presets=["PLA", "PETG", "ABS"])
 ### Project orientation
 ```
 workspace_tree → workspace_list → workspace_recent
+```
+
+### Format conversion
+```
+format_detect → model_convert → model_preview (verify)
+```
+
+### Preview any 3D file
+```
+model_preview(file_path="model.step") → inline image in chat
+```
+
+### Troubleshoot a print problem
+```
+cad_troubleshoot(symptom="...") → cad_explain(topic="related concept") → cad_best_practices(topic="material")
+```
+
+### Learn about a topic
+```
+cad_explain(topic="...") → cad_best_practices(topic="...")
 ```

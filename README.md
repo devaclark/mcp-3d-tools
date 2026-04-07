@@ -1,13 +1,14 @@
 # mcp-3d-tools
 
-[License: MIT](LICENSE)
-[Python 3.12](https://python.org)
-[Docker](Dockerfile)
-[MCP](https://modelcontextprotocol.io)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-required-blue.svg)
+![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-green.svg)
+![Tools](https://img.shields.io/badge/Tools-39-orange.svg)
 
 **Bridge the gap between thought and 3D print.**
 
-`mcp-3d-tools` is a [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI coding assistants direct access to 3D modeling tools. Describe what you want to build, and the AI can render OpenSCAD files, see inline previews directly in chat, analyze mesh quality, sweep parametric designs, estimate print costs, and export print-ready 3MF files -- all without leaving your editor.
+`mcp-3d-tools` is a [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI coding assistants direct access to 3D modeling tools. Describe what you want to build, and the AI can render OpenSCAD files, preview any 3D format (STL, STEP, OBJ, and 20+ more) inline in chat, analyze mesh quality, sweep parametric designs, convert between formats, estimate print costs, troubleshoot printing problems, and export print-ready 3MF files -- all without leaving your editor.
 
 ---
 
@@ -33,10 +34,13 @@ flowchart LR
   end
   subgraph DockerContainer [Docker Container]
     mcpServer["Python MCP Server\n(FastMCP, stdio)"]
-    toolRegistry["Tool Registry\n(6 categories, 30 tools)"]
+    toolRegistry["Tool Registry\n(8 categories, 39 tools)"]
     openscadBin["OpenSCAD\n(headless)"]
     bambuCli["Bambu Studio CLI"]
-    renderEngine["Trimesh\n(STL rendering)"]
+    renderEngine["Trimesh + pyrender\n(3D rendering)"]
+    cadquery["cadquery\n(STEP/IGES/BREP)"]
+    knowledgeBase["Knowledge Base\n(education)"]
+    xvfb["Xvfb\n(virtual display)"]
   end
   subgraph HostFS [Host Filesystem]
     workspace["/workspace\n(volume mount)"]
@@ -46,18 +50,25 @@ flowchart LR
   toolRegistry --> openscadBin
   toolRegistry --> bambuCli
   toolRegistry --> renderEngine
+  toolRegistry --> cadquery
+  toolRegistry --> knowledgeBase
+  openscadBin --> xvfb
+  renderEngine --> xvfb
   openscadBin --> workspace
   bambuCli --> workspace
   renderEngine --> workspace
+  cadquery --> workspace
   mcpServer -->|"Image content"| chat
 ```
 
 
 
 - **Transport:** stdio over `docker run --rm -i` -- the IDE spawns the container and communicates via stdin/stdout.
-- **Isolation:** All tools (OpenSCAD, Bambu Studio CLI, trimesh) run inside the Linux container. No host-side dependencies beyond Docker.
+- **Isolation:** All tools (OpenSCAD, Bambu Studio CLI, trimesh, cadquery) run inside the Linux container. No host-side dependencies beyond Docker.
 - **File access:** Your project directory is volume-mounted at `/workspace`. Tools read .scad source and write .stl/.3mf/.png output there.
 - **Inline images:** Tools return PNG images as base64 content blocks via the MCP protocol. Cursor renders them directly in chat.
+- **Format intelligence:** Universal support for 20+ 3D file formats (STL, OBJ, STEP, IGES, PLY, 3MF, GLB, and more) via trimesh and cadquery/OpenCascade.
+- **Education:** Built-in knowledge base with 45+ concepts, best-practice checklists, and troubleshooting guides.
 
 ---
 
@@ -107,7 +118,7 @@ Replace `/path/to/your/project` with the directory containing your .scad files.
 
 ### 5. Restart Cursor
 
-Restart Cursor IDE completely. The `cad-tools` MCP server will appear in your tool list with 30 tools across 6 categories.
+Restart Cursor IDE completely. The `cad-tools` MCP server will appear in your tool list with 39 tools across 8 categories.
 
 ---
 
@@ -175,17 +186,44 @@ Restart Cursor IDE completely. The `cad-tools` MCP server will appear in your to
 | `workspace_recent` | Recently modified files          | `count`                 |
 
 
-### System Tools (3)
+### Format Tools (4)
 
 
-| Tool               | Description                           | Key Parameters |
-| ------------------ | ------------------------------------- | -------------- |
-| `cad_health`       | System status and tool availability   | --             |
-| `cad_capabilities` | Full catalog of all tools             | --             |
-| `cad_workflow`     | Suggest optimal tool chain for a goal | `goal`         |
+| Tool             | Description                                         | Key Parameters                          |
+| ---------------- | --------------------------------------------------- | --------------------------------------- |
+| `format_detect`  | Identify file format, capabilities, and programs    | `file_path`                             |
+| `model_info`     | Full geometry metadata for any supported 3D file    | `file_path`                             |
+| `model_preview`  | Render any 3D format to PNG inline in chat          | `file_path`, `camera_angle`             |
+| `model_convert`  | Convert between 3D formats with fidelity analysis   | `input_file`, `output_format`           |
+
+Supported formats: STL, OBJ, PLY, 3MF, GLB, GLTF, DAE, AMF, OFF, DXF, STEP, STP, IGES, IGS, BREP.
 
 
-### Example: Full Workflow
+### Education Tools (4)
+
+
+| Tool                 | Description                                       | Key Parameters |
+| -------------------- | ------------------------------------------------- | -------------- |
+| `cad_explain`        | Explain any 3D modeling or printing concept        | `topic`        |
+| `format_guide`       | Industry guide for a specific 3D file format       | `format_name`  |
+| `cad_best_practices` | Best practices for a material, technique, or task | `topic`        |
+| `cad_troubleshoot`   | Diagnose 3D printing problems from symptoms       | `symptom`      |
+
+
+### System Tools (4)
+
+
+| Tool                 | Description                                       | Key Parameters              |
+| -------------------- | ------------------------------------------------- | --------------------------- |
+| `cad_health`         | System status, tool availability, host programs   | --                          |
+| `cad_capabilities`   | Full catalog of all tools                         | --                          |
+| `cad_workflow`       | Suggest optimal tool chain for a goal             | `goal`                      |
+| `cad_recommend_tools`| Recommend programs to install for a workflow      | `file_path_or_extension`, `goal` |
+
+
+### Examples
+
+**Render-to-print workflow:**
 
 ```
 User: "Render camera_arm.scad with fit_profile=tight, measure the output,
@@ -200,6 +238,32 @@ AI calls:
      → Manifold check, overhangs, thin walls
   4. bambu_slice(stl_files=["camera_arm.stl"])
      → Print-ready 3MF with time and filament estimates
+```
+
+**Universal format preview and conversion:**
+
+```
+User: "Preview this STEP file and convert it to STL for printing."
+
+AI calls:
+  1. model_preview(file_path="housing.step")
+     → Inline image of the STEP model appears in chat
+  2. model_convert(input_file="housing.step", output_format="stl")
+     → STL exported with fidelity analysis
+  3. mesh_analyze(stl_file="housing.stl")
+     → Printability check on the converted mesh
+```
+
+**Troubleshooting a print problem:**
+
+```
+User: "My prints keep warping off the bed."
+
+AI calls:
+  1. cad_troubleshoot(symptom="warping off bed")
+     → Diagnosis with causes, step-by-step fixes, and prevention tips
+  2. cad_best_practices(topic="bed adhesion")
+     → Material-specific adhesion checklist
 ```
 
 ---
@@ -229,15 +293,18 @@ openscad_render(scad_file="camera_arm.scad", variables={"fit_profile": "normal"}
 All configuration is in `.env` (copied from `.env.template`):
 
 
-| Variable                | Default                                       | Description                                        |
-| ----------------------- | --------------------------------------------- | -------------------------------------------------- |
-| `WORKSPACE_ROOT`        | `/workspace`                                  | Container path to mounted project directory        |
-| `LOG_LEVEL`             | `INFO`                                        | Python logging level (DEBUG, INFO, WARNING, ERROR) |
-| `MCP_TOOL_CATEGORIES`   | `openscad,bambu,visual,mesh,workspace,system` | Enabled tool categories                            |
-| `OPENSCAD_BIN`          | `/usr/bin/openscad`                           | Path to OpenSCAD binary inside container           |
-| `BAMBU_BIN`             | `/usr/local/bin/bambu-studio`                 | Path to Bambu Studio CLI inside container          |
-| `BAMBU_PRINTER_PRESET`  | `Bambu Lab X1 Carbon 0.4 nozzle`              | Default printer preset for slicing                 |
-| `BAMBU_FILAMENT_PRESET` | `Bambu PETG-HF`                               | Default filament preset for slicing                |
+| Variable                | Default                                                        | Description                                        |
+| ----------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
+| `WORKSPACE_ROOT`        | `/workspace`                                                   | Container path to mounted project directory        |
+| `LOG_LEVEL`             | `INFO`                                                         | Python logging level (DEBUG, INFO, WARNING, ERROR) |
+| `MCP_TOOL_CATEGORIES`   | `openscad,bambu,visual,mesh,format,workspace,education,system` | Enabled tool categories (all 8)                    |
+| `OPENSCAD_BIN`          | `/usr/bin/openscad`                                            | Path to OpenSCAD binary inside container           |
+| `BAMBU_BIN`             | `/usr/local/bin/bambu-studio`                                  | Path to Bambu Studio CLI inside container          |
+| `BAMBU_PRINTER_PRESET`  | `Bambu Lab X1 Carbon 0.4 nozzle`                              | Default printer preset for slicing                 |
+| `BAMBU_FILAMENT_PRESET` | `Bambu PETG-HF`                                               | Default filament preset for slicing                |
+| `HOST_PROGRAMS_ENABLED` | `false`                                                        | Enable host-installed program detection            |
+| `HOST_BLENDER_BIN`      | *(empty)*                                                      | Path to Blender binary on host                     |
+| `HOST_FREECAD_BIN`      | *(empty)*                                                      | Path to FreeCAD binary on host                     |
 
 
 ---
@@ -270,13 +337,13 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for a step-by-step guide.
 ## Roadmap
 
 
-| Phase          | Timeline     | Focus                                                                                                   |
-| -------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
-| **1-3 (Done)** | Apr 2026     | 30 tools: render, preview, measure, slice, analyze, repair, sweep, compare, estimate, workspace, system |
-| **4**          | May-Jun 2026 | Analysis heatmaps, multi-material AMS, animated turntable                                               |
-| **5**          | Jun-Jul 2026 | KiCad PCB bridge, FreeCAD/STEP import, BOM generator                                                    |
-| **6**          | Jul-Aug 2026 | Persistent knowledge store, design intent memory, printer fleet                                         |
-| **7**          | Aug-Oct 2026 | Vision-based print QA, generative design, community plugins                                             |
+| Phase            | Timeline     | Focus                                                                                                                    |
+| ---------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **1-3.5 (Done)** | Apr 2026     | 39 tools: render, preview, measure, slice, analyze, repair, sweep, compare, estimate, format, education, workspace, system |
+| **4**            | May-Jun 2026 | Analysis heatmaps, multi-material AMS, animated turntable                                                                |
+| **5**            | Jun-Jul 2026 | KiCad PCB bridge, BOM generator                                                                                          |
+| **6**            | Jul-Aug 2026 | Persistent knowledge store, design intent memory, printer fleet                                                          |
+| **7**            | Aug-Oct 2026 | Vision-based print QA, generative design, community plugins                                                              |
 
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed feature descriptions.
