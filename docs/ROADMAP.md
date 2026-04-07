@@ -119,7 +119,8 @@ Format-agnostic 3D tools and educational capabilities.
 - **STEP/IGES support** -- OpenCascade via cadquery for loading and converting solid geometry formats.
 - **Educational tools** -- `cad_explain` teaches 3D modeling and printing concepts. `format_guide` provides industry guidance for any format. `cad_best_practices` gives actionable checklists by material or technique.
 - **Environment intelligence** -- Enhanced `cad_health` probes for all available programs. `cad_recommend_tools` suggests industry-standard software based on file types and workflow goals.
-- **Consistent return types** -- All 38 tools now return `list` for reliable `outputSchema` compliance (fixes inline image rendering in Cursor).
+- **Troubleshooting** -- `cad_troubleshoot` diagnoses 3D printing problems from symptoms with causes, step-by-step fixes, and prevention tips.
+- **Consistent return types** -- All 39 tools now return `list` for reliable `outputSchema` compliance (fixes inline image rendering in Cursor).
 
 ---
 
@@ -172,10 +173,11 @@ Close the loop between digital design and physical output.
 | 2 | Done | 12 | 23 |
 | 2.5 | Done | 8 | 31 |
 | 3 | Done | 3 | 34 |
-| 4 | Planned | ~4 | ~38 |
-| 5 | Planned | ~3 | ~41 |
-| 6 | Planned | ~3 | ~44 |
-| 7 | Planned | ~3 | ~47 |
+| 3.5 | Done | 5 | 39 |
+| 4 | Planned | ~4 | ~43 |
+| 5 | Planned | ~3 | ~46 |
+| 6 | Planned | ~3 | ~49 |
+| 7 | Planned | ~3 | ~52 |
 
 ---
 

@@ -92,7 +92,7 @@ tools/
   mesh_tools.py          # Category: mesh (4 tools)
   format_tools.py        # Category: format (4 tools) — universal 3D format support
   workspace_tools.py     # Category: workspace (5 tools)
-  education_tools.py     # Category: education (3 tools) — teaching and best practices
+  education_tools.py     # Category: education (4 tools) — teaching, best practices, troubleshooting
   system_tools.py        # Category: system (4 tools)
 ```
 
@@ -223,6 +223,6 @@ All external tool invocations go through `utils/subprocess_runner.py`:
 | mesh      | 4     | Analyze, repair, simplify, boolean         |
 | format    | 4     | Detect, info, preview (universal), convert |
 | workspace | 5     | List, tree, read, search, recent           |
-| education | 3     | Explain concepts, format guides, best practices |
+| education | 4     | Explain concepts, format guides, best practices, troubleshoot |
 | system    | 4     | Health, capabilities, workflow, recommend tools |
-| **Total** | **38**|                                            |
+| **Total** | **39**|                                            |

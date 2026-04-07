@@ -63,7 +63,9 @@ CATEGORY_MODULES: dict[str, str] = {
     "bambu": "tools.bambu_tools",
     "visual": "tools.visual_tools",
     "mesh": "tools.mesh_tools",
+    "format": "tools.format_tools",
     "workspace": "tools.workspace_tools",
+    "education": "tools.education_tools",
     "system": "tools.system_tools",
     "your_category": "tools.your_tools",  # Add this line
 }
@@ -74,7 +76,7 @@ CATEGORY_MODULES: dict[str, str] = {
 In `.env`, add the category:
 
 ```
-MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,workspace,system,your_category
+MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,format,workspace,education,system,your_category
 ```
 
 ### 4. Update the Dockerfile (if needed)
@@ -176,7 +178,7 @@ print(asyncio.run(openscad_render('path/to/file.scad')))
 ### Check all categories load
 
 ```bash
-docker run --rm -e MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,workspace,system \
+docker run --rm -e MCP_TOOL_CATEGORIES=openscad,bambu,visual,mesh,format,workspace,education,system \
   smithie-cad-mcp:latest python -c "
 from tools.registry import load_tools
 loaded = load_tools(lambda f: print(f'  registered: {f.__name__}'))
