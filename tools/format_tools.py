@@ -307,6 +307,8 @@ async def model_convert(
         "vertices": len(mesh.vertices),
         "faces": len(mesh.faces),
         "fidelity_analysis": fidelity,
+        "interpretation": f"Converted {src_info.name} to {dst_info.name}. {fidelity}",
+        "learn_more": [f"format_guide('{src_info.extensions[0]}')", "cad_explain('brep')" if any(c.value == 'solid_brep' for c in src_info.capabilities) else "cad_explain('mesh')"],
     })]
 
 

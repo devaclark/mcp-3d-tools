@@ -15,6 +15,7 @@ from typing import Callable
 from utils.subprocess_runner import run as run_cmd
 from utils.path_utils import WORKSPACE
 from utils import format_registry as fmt
+from tools.registry import get_enabled_categories
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ TOOL_CATALOG = {
             "cad_explain": "Explain any 3D modeling, printing, or manufacturing concept",
             "format_guide": "Industry guide for a specific 3D file format",
             "cad_best_practices": "Best practices for a given task or material",
+            "cad_troubleshoot": "Diagnose 3D printing problems from symptoms",
         },
     },
     "system": {
@@ -203,6 +205,16 @@ WORKFLOW_TEMPLATES = {
         ],
         "description": "Educational tools that teach concepts and best practices.",
     },
+    "troubleshoot_print": {
+        "goal": "Diagnose and fix a 3D printing problem",
+        "steps": [
+            "cad_troubleshoot(symptom='describe the problem') — get diagnosis and fixes",
+            "cad_explain(topic='related concept') — understand the underlying cause",
+            "cad_best_practices(topic='material') — prevent recurrence with best practices",
+        ],
+        "description": "Symptom-based diagnosis with causes, fixes, and prevention.",
+        "learn_more": "Use cad_troubleshoot('') to see all diagnosable problems.",
+    },
 }
 
 
@@ -265,8 +277,7 @@ async def cad_health() -> list:
 
     health["supported_formats"] = fmt.all_supported_extensions()
 
-    enabled = os.environ.get("MCP_TOOL_CATEGORIES", "")
-    health["enabled_categories"] = [c.strip() for c in enabled.split(",") if c.strip()]
+    health["enabled_categories"] = get_enabled_categories()
 
     return [json.dumps(health)]
 
@@ -280,8 +291,7 @@ async def cad_capabilities() -> list:
     Returns:
         JSON string with the complete tool catalog organized by category.
     """
-    enabled = os.environ.get("MCP_TOOL_CATEGORIES", "").split(",")
-    enabled = [c.strip().lower() for c in enabled if c.strip()]
+    enabled = get_enabled_categories()
 
     catalog = {}
     total_tools = 0
@@ -341,6 +351,7 @@ async def cad_workflow(
         "project_overview": ["overview", "project", "structure", "orient", "files", "what", "list"],
         "convert_format": ["convert", "export", "transform", "change format", "step to stl", "obj to"],
         "learn_concept": ["learn", "explain", "teach", "understand", "what is", "how does"],
+        "troubleshoot_print": ["troubleshoot", "diagnose", "problem", "issue", "fix", "wrong", "fail", "error", "broken", "bad", "help"],
     }
 
     for name, keywords in keywords_map.items():
@@ -365,13 +376,17 @@ async def cad_workflow(
         for name, wf, _ in scored[1:3]
     ]
 
-    return [json.dumps({
+    response = {
         "recommended_workflow": best_name,
         "goal": best_wf["goal"],
         "description": best_wf["description"],
         "steps": best_wf["steps"],
         "alternatives": alternatives,
-    })]
+    }
+    if best_wf.get("learn_more"):
+        response["learn_more"] = best_wf["learn_more"]
+
+    return [json.dumps(response)]
 
 
 async def cad_recommend_tools(

@@ -40,12 +40,14 @@ mcp = FastMCP(
         "- bambu_slice() prepares print-ready 3MF for Bambu Lab printers\n"
         "- bambu_estimate() predicts print time, filament usage, and cost\n\n"
         "EDUCATION:\n"
-        "- cad_explain() teaches 3D modeling and printing concepts\n"
+        "- cad_explain() teaches 45+ 3D modeling and printing concepts\n"
         "- format_guide() provides industry guidance for any file format\n"
         "- cad_best_practices() gives actionable checklists by material or technique\n"
+        "- cad_troubleshoot() diagnoses printing problems from symptoms with fixes\n"
         "- cad_recommend_tools() suggests programs to install for any workflow\n\n"
         "Start with cad_capabilities() to see all available tools, or\n"
         "cad_workflow(goal='...') for a recommended tool chain.\n"
+        "Use cad_troubleshoot(symptom='...') to diagnose printing problems.\n"
         "Use cad_health() to verify system status."
     ),
 )

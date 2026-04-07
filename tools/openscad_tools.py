@@ -186,7 +186,8 @@ async def openscad_lint(
     if not os.path.isfile(src):
         return error_response(f"File not found: {src}")
 
-    dummy_out = os.path.join("/tmp", "lint_dummy.csg")
+    import tempfile
+    dummy_out = os.path.join(tempfile.gettempdir(), "lint_dummy.csg")
     args = [OPENSCAD_BIN, "-o", dummy_out, src]
     result = await run_cmd(args, timeout=timeout)
 

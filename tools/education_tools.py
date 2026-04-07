@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Callable
 
-from utils.knowledge_base import find_concept, find_best_practices, list_all_topics
+from utils.knowledge_base import find_concept, find_best_practices, find_troubleshooting, list_all_topics
 from utils import format_registry as fmt
 
 logger = logging.getLogger(__name__)
@@ -203,6 +203,81 @@ async def cad_best_practices(
     return [json.dumps(response)]
 
 
+async def cad_troubleshoot(
+    symptom: str,
+) -> list:
+    """Diagnose a 3D printing or modeling problem from symptoms.
+
+    Describe what's going wrong with your print or model, and get
+    probable causes, step-by-step fixes, and which materials are
+    most affected.
+
+    Args:
+        symptom: Description of the problem (e.g. "stringing",
+            "layers splitting", "print won't stick to bed",
+            "dimensions are wrong", "rough overhangs").
+
+    Returns:
+        JSON metadata with diagnosis, causes, fixes, and related concepts.
+    """
+    if not symptom.strip():
+        all_topics = list_all_topics()
+        return [json.dumps({
+            "message": "Describe a problem you're experiencing.  "
+                       "Here are common issues I can diagnose:",
+            "troubleshooting_topics": all_topics.get("troubleshooting", []),
+        })]
+
+    results = find_troubleshooting(symptom)
+
+    if not results:
+        concept_results = find_concept(symptom)
+        if concept_results:
+            best = concept_results[0]
+            clean = {k: v for k, v in best.items() if not k.startswith("_")}
+            return [json.dumps({
+                "query": symptom,
+                "found_diagnosis": False,
+                "found_concept": True,
+                "message": f"No specific troubleshooting entry for '{symptom}', "
+                           f"but here's related concept information:",
+                **clean,
+            })]
+
+        all_topics = list_all_topics()
+        return [json.dumps({
+            "query": symptom,
+            "found_diagnosis": False,
+            "message": f"No diagnosis found for '{symptom}'.  "
+                       f"Try describing the symptom differently, or browse available topics:",
+            "troubleshooting_topics": all_topics.get("troubleshooting", []),
+        })]
+
+    best = results[0]
+    clean = {k: v for k, v in best.items() if not k.startswith("_")}
+
+    also_relevant = []
+    for r in results[1:]:
+        also_relevant.append({
+            "title": r["title"],
+            "symptom": r["symptom"],
+        })
+
+    response: dict = {
+        "query": symptom,
+        "found_diagnosis": True,
+        **clean,
+    }
+    if also_relevant:
+        response["also_relevant"] = also_relevant
+
+    related = clean.get("related_concepts", [])
+    if related:
+        response["learn_more"] = [f"cad_explain('{c}')" for c in related[:3]]
+
+    return [json.dumps(response)]
+
+
 def _format_workflow_hint(info: fmt.FormatInfo) -> str:
     """Generate a workflow hint for a given format."""
     if info.loader == fmt.Loader.OPENSCAD:
@@ -234,3 +309,4 @@ def register(tool_decorator: Callable) -> None:
     tool_decorator(cad_explain)
     tool_decorator(format_guide)
     tool_decorator(cad_best_practices)
+    tool_decorator(cad_troubleshoot)

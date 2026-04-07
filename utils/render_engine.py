@@ -39,6 +39,8 @@ class RenderResult:
     camera_angle: str
 
 
+OPENSCAD_EXTENSIONS = {".scad"}
+
 def _load_mesh(file_path: str):
     """Load a 3D file as a trimesh mesh.
 
@@ -51,6 +53,8 @@ def _load_mesh(file_path: str):
 
     if ext in OCP_EXTENSIONS:
         return _load_via_ocp(file_path)
+    if ext in OPENSCAD_EXTENSIONS:
+        return _load_via_openscad(file_path)
 
     return trimesh.load(file_path, force="mesh")
 
@@ -82,6 +86,36 @@ def _load_via_ocp(file_path: str):
     verts = np.array([(v.x, v.y, v.z) for v in vertices])
     tris = np.array([(f[0], f[1], f[2]) for f in faces])
     return trimesh.Trimesh(vertices=verts, faces=tris)
+
+
+def _load_via_openscad(file_path: str):
+    """Load .scad by rendering to a temporary STL via OpenSCAD CLI."""
+    import trimesh
+    import tempfile
+    import subprocess
+
+    openscad_bin = os.environ.get("OPENSCAD_BIN", "/usr/bin/openscad")
+    if not os.path.isfile(openscad_bin):
+        raise ImportError(
+            f"OpenSCAD is required to load .scad files but was not found at {openscad_bin}"
+        )
+
+    with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    try:
+        result = subprocess.run(
+            [openscad_bin, "-o", tmp_path, file_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"OpenSCAD render failed: {result.stderr.strip()[-500:]}"
+            )
+        return trimesh.load(tmp_path, force="mesh")
+    finally:
+        if os.path.isfile(tmp_path):
+            os.unlink(tmp_path)
 
 
 def _camera_transform(azimuth_deg: float, elevation_deg: float, distance: float):

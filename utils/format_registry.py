@@ -374,21 +374,3 @@ def conversion_fidelity(src_ext: str, dst_ext: str) -> str:
         f"{src.conversion_notes}"
     )
 
-
-def get_conversion_matrix() -> dict:
-    """Return the full conversion compatibility matrix."""
-    mesh_exts = [e for e, f in FORMATS.items()
-                 if f.loader in (Loader.TRIMESH, Loader.OCP, Loader.OPENSCAD)
-                 and Capability.MESH in f.capabilities or Capability.SOLID in f.capabilities]
-
-    matrix: dict[str, dict[str, str]] = {}
-    for src in mesh_exts:
-        matrix[src] = {}
-        for dst in mesh_exts:
-            if src == dst:
-                matrix[src][dst] = "identity"
-            elif can_convert(src, dst):
-                matrix[src][dst] = "supported"
-            else:
-                matrix[src][dst] = "unsupported"
-    return matrix

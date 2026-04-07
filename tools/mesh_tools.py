@@ -24,11 +24,70 @@ def _load_trimesh(path: str):
     return trimesh.load(path, force="mesh")
 
 
+def _interpret_analysis(data: dict) -> dict:
+    """Generate educational interpretation of mesh analysis results."""
+    issues = []
+    suggestions = []
+    learn_more = []
+
+    # Watertight check
+    if not data.get("is_watertight"):
+        issues.append("Mesh is NOT watertight (not manifold). Slicers need a watertight mesh to determine inside vs outside.")
+        suggestions.append("Run mesh_repair() to auto-fix holes and non-manifold edges.")
+        learn_more.append("cad_explain('manifold')")
+
+    if not data.get("is_winding_consistent"):
+        issues.append("Face winding is inconsistent — some normals point inward. This confuses slicers about surface direction.")
+        suggestions.append("Run mesh_repair(fix_normals=True) to correct winding order.")
+
+    # Overhang assessment
+    overhang_pct = data.get("overhangs", {}).get("percentage", 0)
+    if overhang_pct > 40:
+        issues.append(f"{overhang_pct}% of faces overhang beyond 45°. This is significant — expect poor surface quality or failed prints without support material.")
+        suggestions.append("Add tree supports in your slicer, or consider reorienting the part to reduce overhangs.")
+        learn_more.append("cad_explain('overhangs')")
+    elif overhang_pct > 15:
+        issues.append(f"{overhang_pct}% of faces overhang beyond 45°. Moderate — some areas may need supports.")
+        suggestions.append("Review overhang areas in your slicer's preview. Selective supports may be sufficient.")
+        if "cad_explain('overhangs')" not in learn_more:
+            learn_more.append("cad_explain('overhangs')")
+
+    # Thin faces
+    thin = data.get("thin_faces", 0)
+    if thin > 0:
+        issues.append(f"{thin} faces have area < 0.01mm² — these may indicate degenerate triangles or extremely thin geometry.")
+        suggestions.append("Run mesh_repair(remove_degenerate=True) to clean up tiny faces.")
+        learn_more.append("cad_explain('wall_thickness')")
+
+    # Printability score
+    if not data.get("is_watertight") or not data.get("is_winding_consistent"):
+        score = "poor"
+    elif overhang_pct > 40 or thin > 100:
+        score = "fair"
+    elif overhang_pct > 15 or thin > 10:
+        score = "good"
+    else:
+        score = "excellent"
+
+    if not issues:
+        issues.append("Mesh looks healthy — watertight, consistent winding, minimal overhangs.")
+
+    if not learn_more:
+        learn_more.append("cad_best_practices('fdm')")
+
+    return {
+        "printability_score": score,
+        "interpretation": " ".join(issues),
+        "suggestions": suggestions,
+        "learn_more": learn_more,
+    }
+
+
 async def mesh_analyze(
     stl_file: str,
 ) -> list:
     """Comprehensive mesh analysis: manifold check, surface area, center of mass,
-    thin wall detection, overhang angles, hole detection, and triangle quality.
+    thin face detection, overhang angles, and printability assessment.
 
     Args:
         stl_file: Path to .stl file.
@@ -78,7 +137,7 @@ async def mesh_analyze(
         except Exception:
             pass
 
-    return [json.dumps({
+    analysis = {
         "file": src,
         "triangles": len(mesh.faces),
         "vertices": len(mesh.vertices),
@@ -110,7 +169,9 @@ async def mesh_analyze(
             "mean_mm2": round(float(np.mean(face_areas)), 3) if len(face_areas) > 0 else 0,
         },
         "repair_needed": not is_watertight or not is_winding_consistent,
-    })]
+    }
+    analysis.update(_interpret_analysis(analysis))
+    return [json.dumps(analysis)]
 
 
 async def mesh_repair(
@@ -182,6 +243,13 @@ async def mesh_repair(
 
     mesh.export(dst)
 
+    if after["is_watertight"] and after["is_winding_consistent"]:
+        interpretation = f"Repaired {len(repairs_applied)} issue(s). Mesh is now watertight and ready for slicing."
+    elif after["is_watertight"]:
+        interpretation = f"Applied {len(repairs_applied)} repair(s). Mesh is watertight but winding may still have issues."
+    else:
+        interpretation = f"Applied {len(repairs_applied)} repair(s) but mesh is still not fully watertight. Manual repair in MeshLab or Blender may be needed."
+
     return [json.dumps({
         "success": True,
         "input_file": src,
@@ -189,6 +257,8 @@ async def mesh_repair(
         "repairs_applied": repairs_applied,
         "before": before,
         "after": after,
+        "interpretation": interpretation,
+        "learn_more": ["cad_explain('manifold')", "cad_best_practices('fdm')"],
     })]
 
 
@@ -234,6 +304,7 @@ async def mesh_simplify(
 
     simplified.export(dst)
 
+    reduction = round(100.0 * (1 - len(simplified.faces) / original_faces), 1)
     return [json.dumps({
         "success": True,
         "input_file": src,
@@ -241,9 +312,10 @@ async def mesh_simplify(
         "original_faces": original_faces,
         "target_faces": target_faces,
         "actual_faces": len(simplified.faces),
-        "reduction_percent": round(
-            100.0 * (1 - len(simplified.faces) / original_faces), 1
-        ),
+        "reduction_percent": reduction,
+        "interpretation": f"Reduced from {original_faces:,} to {len(simplified.faces):,} faces ({reduction}% reduction). "
+                          f"Visual quality should be preserved for most purposes at this level.",
+        "learn_more": ["cad_explain('mesh')"],
     })]
 
 
@@ -295,6 +367,12 @@ async def mesh_boolean(
 
     result_mesh.export(dst)
 
+    op_descriptions = {
+        "union": "merged both meshes into a single solid",
+        "difference": "subtracted the second mesh from the first",
+        "intersection": "kept only the overlapping volume of both meshes",
+    }
+    watertight_note = "Result is watertight." if result_mesh.is_watertight else "Result is NOT watertight — run mesh_repair() to fix."
     return [json.dumps({
         "success": True,
         "operation": operation,
@@ -303,6 +381,9 @@ async def mesh_boolean(
         "output_file": dst,
         "result_triangles": len(result_mesh.faces),
         "result_is_watertight": bool(result_mesh.is_watertight),
+        "interpretation": f"Boolean {operation}: {op_descriptions[operation]}. "
+                          f"Result has {len(result_mesh.faces):,} triangles. {watertight_note}",
+        "learn_more": ["cad_explain('csg')", "cad_explain('manifold')"],
     })]
 
 
